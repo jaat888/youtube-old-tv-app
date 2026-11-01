@@ -1,0 +1,49 @@
+name: Build YT TV APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Repo mein sirf android-tv.zip ho to use extract kar do (folder upload ki zarurat nahi)
+      - name: Extract android-tv.zip (if needed)
+        run: |
+          if [ ! -f android-tv/settings.gradle.kts ]; then
+            unzip -q -o android-tv.zip
+          fi
+          ls android-tv
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Android SDK ubuntu-latest runner mein pehle se installed hai; bas licenses accept karte hain
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        working-directory: android-tv
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: yt-tv-debug-apk
+          path: android-tv/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
